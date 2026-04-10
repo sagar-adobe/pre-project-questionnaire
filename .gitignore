@@ -40,5 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# generated at build time — do not commit
-/public/questions.json
+# questions.json is intentionally committed — edit it directly to change the
+# question set for your domain. See public/questions.json for the format.
