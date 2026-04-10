@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [github-pages]   # deploy whenever this branch is pushed
+    branches: [main]   # deploy whenever main is pushed
   workflow_dispatch:            # allow manual runs from the Actions tab
 
 # Grant write access to GitHub Pages
@@ -22,22 +22,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        # NOTE: Frontend_Developer_Questions.xlsx must be committed to the repo root.
-        # The prebuild script reads it to generate public/questions.json.
 
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-          cache-dependency-path: questionnaire-app/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        working-directory: questionnaire-app
         run: npm ci
 
       - name: Build (generates questions.json then next build)
-        working-directory: questionnaire-app
         env:
           # Sets the basePath so all assets and routes are served under /repo-name/
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
@@ -50,7 +46,7 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: questionnaire-app/out
+          path: out
 
   deploy:
     needs: build
