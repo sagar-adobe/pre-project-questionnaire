@@ -24,11 +24,11 @@ export default function ProjectList() {
 
   function handleNew() {
     const project = createProject()
-    router.push(`/project/${project.meta.id}`)
+    router.push(`/?project=${project.meta.id}`)
   }
 
   function handleOpen(id: string) {
-    router.push(`/project/${id}`)
+    router.push(`/?project=${id}`)
   }
 
   function handleDelete(id: string) {
