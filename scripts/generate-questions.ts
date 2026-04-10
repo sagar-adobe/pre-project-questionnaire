@@ -96,6 +96,13 @@ function sheetToCategories(ws: XLSX.WorkSheet, sheetName: string): Category[] {
 
 async function main() {
   const filePath = join(process.cwd(), '..', 'Frontend_Developer_Questions.xlsx')
+
+  // If no Excel file is present, leave the committed public/questions.json untouched.
+  if (!require('fs').existsSync(filePath)) {
+    console.log('ℹ  No Excel file found — using existing public/questions.json')
+    return
+  }
+
   const fileBuffer = require('fs').readFileSync(filePath)
   const workbook = XLSX.read(fileBuffer, { type: 'buffer' })
 
