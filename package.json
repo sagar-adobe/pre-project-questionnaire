@@ -8,7 +8,8 @@
     "prebuild": "tsx scripts/generate-questions.ts",
     "build": "next build",
     "start": "next start",
-    "generate-questions": "tsx scripts/generate-questions.ts"
+    "generate-questions": "tsx scripts/generate-questions.ts",
+    "preview": "npx serve out"
   },
   "dependencies": {
     "buffer": "^6.0.3",
