@@ -7,6 +7,7 @@ import { isAnswered } from '@/lib/questionTypes'
 import QuestionItem from './QuestionItem'
 import AddCustomQuestion from './AddCustomQuestion'
 import ConfirmModal from './ConfirmModal'
+import type { QuestionOverride } from '@/lib/projectStorage'
 
 type Props = {
   sheet: string
@@ -17,6 +18,8 @@ type Props = {
   questionOffset: number              // for numbering
   projectId: string
   mandatoryQuestions: Set<string>
+  questionOverrides: Record<string, QuestionOverride>
+  editMode: boolean
   isCustomCategory?: boolean          // true when this is a user-added category
   customCategoryId?: string           // id of the custom category (for delete)
   onChange: (id: string, value: string) => void
@@ -26,6 +29,7 @@ type Props = {
   onAddCustom: (q: CustomQuestion) => void
   onDeleteCustom: (id: string) => void
   onToggleMandatory: (id: string) => void
+  onEditQuestion: (id: string, question: string, description: string | undefined) => void
   onHideCategory?: (sheetCatKey: string) => void        // for existing categories
   onDeleteCustomCategory?: (id: string) => void         // for custom categories
 }
@@ -39,6 +43,8 @@ export default function CategorySection({
   questionOffset,
   projectId,
   mandatoryQuestions,
+  questionOverrides,
+  editMode,
   isCustomCategory = false,
   customCategoryId,
   onChange,
@@ -48,6 +54,7 @@ export default function CategorySection({
   onAddCustom,
   onDeleteCustom,
   onToggleMandatory,
+  onEditQuestion,
   onHideCategory,
   onDeleteCustomCategory,
 }: Props) {
@@ -154,8 +161,8 @@ export default function CategorySection({
             </div>
           </button>
 
-          {/* Delete / Hide button */}
-          {(onHideCategory || (isCustomCategory && onDeleteCustomCategory)) && (
+          {/* Delete / Hide button — only in edit mode */}
+          {editMode && (onHideCategory || (isCustomCategory && onDeleteCustomCategory)) && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(true) }}
               className="ml-2 shrink-0 p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0"
@@ -178,22 +185,28 @@ export default function CategorySection({
           <div className="mt-2 pl-2">
             {/* Visible regular questions */}
             <div className="space-y-2">
-              {visibleQuestions.map((q, idx) => (
-                <QuestionItem
-                  key={q.id}
-                  question={q}
-                  questionNumber={questionOffset + idx + 1}
-                  answer={answers[q.id] || ''}
-                  notes={answers[q.id + '_notes'] || ''}
-                  attachmentsJson={answers[q.id + '_attachments'] || ''}
-                  projectId={projectId}
-                  isMandatory={mandatoryQuestions.has(q.id)}
-                  onChange={onChange}
-                  onNotes={onNotes}
-                  onHide={onHide}
-                  onToggleMandatory={onToggleMandatory}
-                />
-              ))}
+              {visibleQuestions.map((q, idx) => {
+                const ov = questionOverrides[q.id]
+                const displayQ = ov ? { ...q, question: ov.question ?? q.question, description: ov.description ?? q.description } : q
+                return (
+                  <QuestionItem
+                    key={q.id}
+                    question={displayQ}
+                    questionNumber={questionOffset + idx + 1}
+                    answer={answers[q.id] || ''}
+                    notes={answers[q.id + '_notes'] || ''}
+                    attachmentsJson={answers[q.id + '_attachments'] || ''}
+                    projectId={projectId}
+                    isMandatory={mandatoryQuestions.has(q.id)}
+                    editMode={editMode}
+                    onChange={onChange}
+                    onNotes={onNotes}
+                    onHide={onHide}
+                    onToggleMandatory={onToggleMandatory}
+                    onEdit={onEditQuestion}
+                  />
+                )
+              })}
             </div>
 
             {/* Hidden questions */}
@@ -240,17 +253,19 @@ export default function CategorySection({
                     projectId={projectId}
                     isMandatory={mandatoryQuestions.has(cq.id)}
                     isCustom
+                    editMode={editMode}
                     onChange={onChange}
                     onNotes={onNotes}
                     onDelete={onDeleteCustom}
                     onToggleMandatory={onToggleMandatory}
+                    onEdit={onEditQuestion}
                   />
                 ))}
               </div>
             )}
 
-            {/* Add custom question */}
-            {showAddForm ? (
+            {/* Add custom question — only in edit mode */}
+            {editMode && (showAddForm ? (
               <AddCustomQuestion
                 sheet={sheet}
                 category={isCustomCategory && customCategoryId ? customCategoryId : category.name}
@@ -271,7 +286,7 @@ export default function CategorySection({
                 </svg>
                 Add question to this category
               </button>
-            )}
+            ))}
           </div>
         )}
       </div>

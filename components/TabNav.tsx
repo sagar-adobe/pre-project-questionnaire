@@ -17,6 +17,7 @@ type Props = {
   items: TabItem[]
   activeId: string
   hiddenBuiltinCount: number
+  editMode: boolean
   onSelect: (id: string) => void
   onAddTab: () => void
   onRenameTab: (id: string, newName: string) => void
@@ -29,6 +30,7 @@ export default function TabNav({
   items,
   activeId,
   hiddenBuiltinCount,
+  editMode,
   onSelect,
   onAddTab,
   onRenameTab,
@@ -113,7 +115,7 @@ export default function TabNav({
               )}
 
               {/* Actions for custom tabs */}
-              {item.isCustom && !isRenaming && (
+              {editMode && item.isCustom && !isRenaming && (
                 <span
                   className="flex items-center gap-0.5 ml-0.5 opacity-0 group-hover/tab:opacity-100 transition-opacity"
                   onClick={(e) => e.stopPropagation()}
@@ -159,7 +161,7 @@ export default function TabNav({
               )}
 
               {/* Hide action for built-in tabs */}
-              {item.isBuiltin && !isRenaming && (
+              {editMode && item.isBuiltin && !isRenaming && (
                 <span
                   className="ml-0.5 opacity-0 group-hover/tab:opacity-100 transition-opacity cursor-pointer"
                   onClick={(e) => { e.stopPropagation(); onHideTab(item.id) }}
@@ -175,8 +177,8 @@ export default function TabNav({
         )
       })}
 
-      {/* Add Tab button */}
-      <button
+      {/* Add Tab button — only in edit mode */}
+      {editMode && <button
         onClick={onAddTab}
         title="Add custom tab"
         className="shrink-0 flex items-center gap-1 px-2.5 py-2 rounded-lg text-sm text-gray-400 dark:text-gray-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 border border-dashed border-gray-300 dark:border-gray-600 hover:border-indigo-300 dark:hover:border-indigo-600 transition-all"
@@ -185,10 +187,10 @@ export default function TabNav({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
         </svg>
         <span className="hidden sm:inline text-xs font-medium">Tab</span>
-      </button>
+      </button>}
 
-      {/* Restore hidden tabs button */}
-      {hiddenBuiltinCount > 0 && (
+      {/* Restore hidden tabs button — only in edit mode */}
+      {editMode && hiddenBuiltinCount > 0 && (
         <button
           onClick={onRestoreAllTabs}
           title="Restore hidden tabs"
