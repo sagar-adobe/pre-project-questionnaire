@@ -43,11 +43,9 @@ jobs:
           NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
         run: npm run build
 
-      # GitHub Pages serves 404.html for every unmatched path.
-      # Copying index.html → 404.html lets Next.js client-side router
-      # handle deep links like /project/abc123 without a real server.
-      - name: Create 404 fallback
-        run: cp questionnaire-app/out/index.html questionnaire-app/out/404.html
+      # No 404 fallback needed — the app is a single route (/).
+      # Project IDs are passed as ?project=<id> search params, so GitHub Pages
+      # always serves the same index.html regardless of the query string.
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
