@@ -21,11 +21,13 @@ type BaseProps = {
   isHidden?: boolean
   isCustom?: boolean
   isMandatory?: boolean
+  editMode?: boolean
   onChange: (id: string, value: string) => void
   onNotes: (id: string, value: string) => void
   onHide?: (id: string) => void
   onDelete?: (id: string) => void
   onToggleMandatory?: (id: string) => void
+  onEdit?: (id: string, question: string, description: string | undefined) => void
 }
 
 type RegularProps = BaseProps & {
@@ -43,7 +45,7 @@ type Props = RegularProps | CustomProps
 export default function QuestionItem(props: Props) {
   const {
     questionNumber, answer, notes, attachmentsJson, projectId,
-    isCustom, isMandatory, onChange, onNotes, onHide, onDelete, onToggleMandatory,
+    isCustom, isMandatory, editMode, onChange, onNotes, onHide, onDelete, onToggleMandatory, onEdit,
   } = props
 
   const id = props.question?.id ?? props.customQuestion!.id
@@ -58,6 +60,22 @@ export default function QuestionItem(props: Props) {
 
   const [showDesc, setShowDesc] = useState(false)
   const [showHideConfirm, setShowHideConfirm] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [editText, setEditText] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+
+  function startEdit() {
+    setEditText(questionText)
+    setEditDesc(description ?? '')
+    setEditing(true)
+  }
+
+  function commitEdit() {
+    if (editText.trim() && onEdit) {
+      onEdit(id, editText.trim(), editDesc.trim() || undefined)
+    }
+    setEditing(false)
+  }
 
   const isNA = answer === NA_VALUE
   const hasAnswer = answer && answer !== NA_VALUE && answer.trim().length > 0 && answer !== '[]'
@@ -197,115 +215,151 @@ export default function QuestionItem(props: Props) {
       <div className={`absolute left-0 top-3 bottom-3 w-0.5 rounded-full ${barClass}`} />
 
       <div className="pl-3">
-        {/* Question header */}
-        <div className="flex items-start justify-between gap-2 mb-2">
-          <div className="flex items-start gap-2 min-w-0 flex-1">
-            <span className="text-xs font-bold text-indigo-400 dark:text-indigo-500 mt-0.5 shrink-0">Q{questionNumber}</span>
-            <div className="min-w-0">
-              <p className={`text-sm font-medium leading-relaxed ${isNA ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
-                {questionText}
-                {isMandatory && (
-                  <span className="ml-1 text-red-500 font-bold" title="Required">*</span>
-                )}
-              </p>
-              <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {typeBadge && (
-                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${typeBadge.color}`}>
-                    {typeBadge.label}
-                  </span>
-                )}
-                {isCustom && (
-                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
-                    Custom
-                  </span>
-                )}
-                {isMandatory && (
-                  <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
-                    Required
-                  </span>
-                )}
-              </div>
+        {/* Inline edit form */}
+        {editing ? (
+          <div className="mb-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-3 space-y-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Question</label>
+              <textarea
+                value={editText}
+                onChange={(e) => setEditText(e.target.value)}
+                rows={2}
+                autoFocus
+                className="w-full text-sm px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white dark:bg-gray-700 dark:text-gray-100 resize-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hint / description <span className="text-gray-400">(optional)</span></label>
+              <input
+                type="text"
+                value={editDesc}
+                onChange={(e) => setEditDesc(e.target.value)}
+                className="w-full text-sm px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white dark:bg-gray-700 dark:text-gray-100"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button onClick={commitEdit} disabled={!editText.trim()} className="px-3 py-1.5 text-xs font-medium bg-amber-500 hover:bg-amber-600 text-white rounded-lg disabled:opacity-40 transition-colors">Save</button>
+              <button onClick={() => setEditing(false)} className="px-3 py-1.5 text-xs font-medium bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors">Cancel</button>
             </div>
           </div>
-
-          {/* Action buttons */}
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            {/* Mandatory toggle */}
-            {onToggleMandatory && (
-              <button
-                onClick={() => onToggleMandatory(id)}
-                className={`p-1.5 rounded-lg transition-all ${
-                  isMandatory
-                    ? 'text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
-                    : 'text-gray-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
-                }`}
-                title={isMandatory ? 'Unmark as required' : 'Mark as required'}
-              >
-                <svg className="w-3.5 h-3.5" fill={isMandatory ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                </svg>
-              </button>
-            )}
-
-            {/* Delete (custom) or Hide (regular) */}
-            {isCustom && onDelete ? (
-              <button
-                onClick={() => onDelete(id)}
-                className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                title="Delete custom question"
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-              </button>
-            ) : onHide ? (
-              showHideConfirm ? (
-                <div className="flex items-center gap-1">
-                  <span className="text-xs text-gray-400 dark:text-gray-500">Hide?</span>
-                  <button
-                    onClick={() => { onHide(id); setShowHideConfirm(false) }}
-                    className="text-xs px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => setShowHideConfirm(false)}
-                    className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600"
-                  >
-                    No
-                  </button>
+        ) : (
+          <>
+            {/* Question header */}
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex items-start gap-2 min-w-0 flex-1">
+                <span className="text-xs font-bold text-indigo-400 dark:text-indigo-500 mt-0.5 shrink-0">Q{questionNumber}</span>
+                <div className="min-w-0">
+                  <p className={`text-sm font-medium leading-relaxed ${isNA ? 'text-gray-400 dark:text-gray-500' : 'text-gray-800 dark:text-gray-200'}`}>
+                    {questionText}
+                    {isMandatory && (
+                      <span className="ml-1 text-red-500 font-bold" title="Required">*</span>
+                    )}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {typeBadge && (
+                      <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${typeBadge.color}`}>
+                        {typeBadge.label}
+                      </span>
+                    )}
+                    {isCustom && (
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400">
+                        Custom
+                      </span>
+                    )}
+                    {isMandatory && (
+                      <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400">
+                        Required
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <button
-                  onClick={() => setShowHideConfirm(true)}
-                  className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
-                  title="Hide this question for this project"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
-                  </svg>
-                </button>
-              )
-            ) : null}
-          </div>
-        </div>
+              </div>
 
-        {/* Description toggle */}
-        {description && (
-          <div className="mb-2">
-            <button
-              onClick={() => setShowDesc(!showDesc)}
-              className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1"
-            >
-              <span>{showDesc ? '▾' : '▸'}</span>
-              <span>{showDesc ? 'Hide hint' : 'Show hint'}</span>
-            </button>
-            {showDesc && (
-              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic bg-indigo-50 dark:bg-indigo-900/20 rounded-md px-3 py-2 leading-relaxed">
-                {description}
-              </p>
+              {/* Action buttons — only visible in edit mode */}
+              {editMode && (
+                <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                  {/* Edit question */}
+                  {onEdit && (
+                    <button
+                      onClick={startEdit}
+                      className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-amber-500 dark:hover:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg transition-all"
+                      title="Edit question text"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Mandatory toggle */}
+                  {onToggleMandatory && (
+                    <button
+                      onClick={() => onToggleMandatory(id)}
+                      className={`p-1.5 rounded-lg transition-all ${
+                        isMandatory
+                          ? 'text-red-500 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30'
+                          : 'text-gray-300 dark:text-gray-600 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
+                      }`}
+                      title={isMandatory ? 'Unmark as required' : 'Mark as required'}
+                    >
+                      <svg className="w-3.5 h-3.5" fill={isMandatory ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Delete (custom) or Hide (regular) */}
+                  {isCustom && onDelete ? (
+                    <button
+                      onClick={() => onDelete(id)}
+                      className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+                      title="Delete custom question"
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  ) : onHide ? (
+                    showHideConfirm ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-400 dark:text-gray-500">Hide?</span>
+                        <button onClick={() => { onHide(id); setShowHideConfirm(false) }} className="text-xs px-2 py-1 bg-gray-600 text-white rounded hover:bg-gray-700">Yes</button>
+                        <button onClick={() => setShowHideConfirm(false)} className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-200 dark:hover:bg-gray-600">No</button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowHideConfirm(true)}
+                        className="p-1.5 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
+                        title="Hide this question"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 4.411m0 0L21 21" />
+                        </svg>
+                      </button>
+                    )
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            {/* Description toggle */}
+            {description && (
+              <div className="mb-2">
+                <button
+                  onClick={() => setShowDesc(!showDesc)}
+                  className="text-xs text-indigo-500 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 flex items-center gap-1"
+                >
+                  <span>{showDesc ? '▾' : '▸'}</span>
+                  <span>{showDesc ? 'Hide hint' : 'Show hint'}</span>
+                </button>
+                {showDesc && (
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 italic bg-indigo-50 dark:bg-indigo-900/20 rounded-md px-3 py-2 leading-relaxed">
+                    {description}
+                  </p>
+                )}
+              </div>
             )}
-          </div>
+          </>
         )}
 
         {/* Answer field */}

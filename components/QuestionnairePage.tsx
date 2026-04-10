@@ -41,6 +41,7 @@ export default function QuestionnairePage({ projectId }: Props) {
   const [sheetsLoaded, setSheetsLoaded] = useState(false)
   const [projectData, setProjectData] = useState<ProjectData | null>(null)
   const [activeTabId, setActiveTabId] = useState<string>('overview')
+  const [editMode, setEditMode] = useState(false)
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [addTabForm, setAddTabForm] = useState<AddTabFormState>(null)
   const [newTabName, setNewTabName] = useState('')
@@ -226,6 +227,33 @@ export default function QuestionnairePage({ projectId }: Props) {
     })
   }, [])
 
+  // ── Edit question text / description ─────────────────────────────────
+  const handleEditQuestion = useCallback((id: string, question: string, description: string | undefined) => {
+    setProjectData((prev) => {
+      if (!prev) return prev
+      // Custom question: update in-place
+      if (prev.customQuestions.some((q) => q.id === id)) {
+        const next: ProjectData = {
+          ...prev,
+          customQuestions: prev.customQuestions.map((q) =>
+            q.id === id ? { ...q, question, description } : q
+          ),
+          meta: { ...prev.meta, updatedAt: new Date().toISOString() },
+        }
+        saveProject(next)
+        return next
+      }
+      // Built-in question: store as override
+      const next: ProjectData = {
+        ...prev,
+        questionOverrides: { ...prev.questionOverrides, [id]: { question, description } },
+        meta: { ...prev.meta, updatedAt: new Date().toISOString() },
+      }
+      saveProject(next)
+      return next
+    })
+  }, [])
+
   // ── Sheets: hide/restore/add/rename/delete ────────────────────────────
   const handleHideSheet = useCallback((sheetName: string) => {
     setProjectData((prev) => {
@@ -309,7 +337,7 @@ export default function QuestionnairePage({ projectId }: Props) {
   const {
     answers, hiddenQuestions, customQuestions, customCategories,
     mandatoryQuestions, hiddenCategories, customSheets = [],
-    hiddenSheets = [],
+    hiddenSheets = [], questionOverrides = {},
   } = projectData
   const hiddenSet = new Set(hiddenQuestions)
   const hiddenCatSet = new Set(hiddenCategories)
@@ -428,6 +456,8 @@ export default function QuestionnairePage({ projectId }: Props) {
                 questionOffset={offset}
                 projectId={projectId}
                 mandatoryQuestions={mandatorySet}
+                questionOverrides={questionOverrides}
+                editMode={editMode}
                 onChange={handleAnswer}
                 onNotes={handleNotes}
                 onHide={handleHide}
@@ -435,6 +465,7 @@ export default function QuestionnairePage({ projectId }: Props) {
                 onAddCustom={handleAddCustom}
                 onDeleteCustom={handleDeleteCustom}
                 onToggleMandatory={handleToggleMandatory}
+                onEditQuestion={handleEditQuestion}
                 onHideCategory={handleHideCategory}
               />
             )
@@ -457,6 +488,8 @@ export default function QuestionnairePage({ projectId }: Props) {
               questionOffset={offset}
               projectId={projectId}
               mandatoryQuestions={mandatorySet}
+              questionOverrides={questionOverrides}
+              editMode={editMode}
               isCustomCategory
               customCategoryId={cc.id}
               onChange={handleAnswer}
@@ -466,13 +499,14 @@ export default function QuestionnairePage({ projectId }: Props) {
               onAddCustom={handleAddCustom}
               onDeleteCustom={handleDeleteCustom}
               onToggleMandatory={handleToggleMandatory}
+              onEditQuestion={handleEditQuestion}
               onDeleteCustomCategory={handleDeleteCustomCategory}
             />
           )
         })}
 
-        {/* Add custom category */}
-        {showAddCategory ? (
+        {/* Add custom category — only in edit mode */}
+        {editMode && (showAddCategory ? (
           <AddCustomCategoryForm
             sheet={sheetId}
             onSave={(name) => {
@@ -491,10 +525,10 @@ export default function QuestionnairePage({ projectId }: Props) {
             </svg>
             Add custom category
           </button>
-        )}
+        ))}
 
-        {/* Restore hidden categories */}
-        {hiddenCatsForActiveSheet.length > 0 && (
+        {/* Restore hidden categories — only in edit mode */}
+        {editMode && hiddenCatsForActiveSheet.length > 0 && (
           <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-xl border border-dashed border-gray-200 dark:border-gray-700">
             <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">
               {hiddenCatsForActiveSheet.length} hidden categor{hiddenCatsForActiveSheet.length !== 1 ? 'ies' : 'y'}:
@@ -553,6 +587,21 @@ export default function QuestionnairePage({ projectId }: Props) {
               <div className="hidden sm:block w-40">
                 <ProgressBar answered={answeredAll} total={totalAll} />
               </div>
+              {/* Edit mode toggle */}
+              <button
+                onClick={() => setEditMode((m) => !m)}
+                title={editMode ? 'Exit edit mode' : 'Enter edit mode'}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all ${
+                  editMode
+                    ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                    : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:border-amber-300 dark:hover:border-amber-600'
+                }`}
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <span className="hidden sm:inline">{editMode ? 'Editing' : 'Edit'}</span>
+              </button>
               <ThemeToggle />
               <ExportButtons
                 sheets={sheets}
@@ -574,6 +623,7 @@ export default function QuestionnairePage({ projectId }: Props) {
             items={tabItems}
             activeId={activeTabId}
             hiddenBuiltinCount={hiddenSheets.length}
+            editMode={editMode}
             onSelect={(id) => { setActiveTabId(id); setShowAddCategory(false) }}
             onAddTab={() => {
               setAddTabForm({ sheet: 'new' })
@@ -590,8 +640,8 @@ export default function QuestionnairePage({ projectId }: Props) {
       {/* Main content */}
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-6">
 
-        {/* Add tab inline form */}
-        {addTabForm && (
+        {/* Add tab inline form — only in edit mode */}
+        {editMode && addTabForm && (
           <div className="mb-6 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-700 rounded-xl p-4">
             <h3 className="text-sm font-semibold text-indigo-800 dark:text-indigo-300 mb-3">New custom tab</h3>
             <div className="flex gap-2">

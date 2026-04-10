@@ -31,6 +31,11 @@ export type CustomSheet = {
   name: string
 }
 
+export type QuestionOverride = {
+  question?: string
+  description?: string
+}
+
 export type ProjectData = {
   meta: ProjectMeta
   answers: Record<string, string>    // questionId → answer value (also _notes, _attachments)
@@ -41,6 +46,7 @@ export type ProjectData = {
   customCategories: CustomCategory[]
   customSheets: CustomSheet[]        // user-added sheet tabs
   hiddenSheets: string[]             // built-in sheet names hidden from tab bar
+  questionOverrides: Record<string, QuestionOverride>  // edits to built-in question text
 }
 
 const LIST_KEY = 'dq_project_list'
@@ -73,6 +79,7 @@ export function getProject(id: string): ProjectData | null {
     if (!data.customCategories) data.customCategories = []
     if (!data.customSheets) data.customSheets = []
     if (!data.hiddenSheets) data.hiddenSheets = []
+    if (!data.questionOverrides) data.questionOverrides = {}
     return data
   } catch {
     return null
@@ -107,6 +114,7 @@ export function createProject(): ProjectData {
     customCategories: [],
     customSheets: [],
     hiddenSheets: [],
+    questionOverrides: {},
   }
   saveProject(data)
   return data
