@@ -1,7 +1,11 @@
-import { parseExcel } from '@/lib/parseExcel'
 import QuestionnairePage from '@/components/QuestionnairePage'
 
-export const dynamic = 'force-dynamic'
+// Pre-generate at least one HTML shell so the JS bundle is included in the
+// static output. The 404.html trick (see deploy workflow) handles real runtime
+// project IDs that aren't known at build time.
+export function generateStaticParams() {
+  return [{ id: 'new' }]
+}
 
 export default async function ProjectPage({
   params,
@@ -9,6 +13,5 @@ export default async function ProjectPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const sheets = await parseExcel()
-  return <QuestionnairePage sheets={sheets} projectId={id} />
+  return <QuestionnairePage projectId={id} />
 }

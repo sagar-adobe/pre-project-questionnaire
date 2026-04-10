@@ -1,0 +1,66 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [github-pages]   # deploy whenever this branch is pushed
+  workflow_dispatch:            # allow manual runs from the Actions tab
+
+# Grant write access to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one deploy at a time; cancel in-flight runs on new pushes
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        # NOTE: Frontend_Developer_Questions.xlsx must be committed to the repo root.
+        # The prebuild script reads it to generate public/questions.json.
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: questionnaire-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: questionnaire-app
+        run: npm ci
+
+      - name: Build (generates questions.json then next build)
+        working-directory: questionnaire-app
+        env:
+          # Sets the basePath so all assets and routes are served under /repo-name/
+          NEXT_PUBLIC_BASE_PATH: /${{ github.event.repository.name }}
+        run: npm run build
+
+      # GitHub Pages serves 404.html for every unmatched path.
+      # Copying index.html → 404.html lets Next.js client-side router
+      # handle deep links like /project/abc123 without a real server.
+      - name: Create 404 fallback
+        run: cp questionnaire-app/out/index.html questionnaire-app/out/404.html
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: questionnaire-app/out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

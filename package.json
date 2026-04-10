@@ -3,9 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "predev": "tsx scripts/generate-questions.ts",
     "dev": "next dev",
+    "prebuild": "tsx scripts/generate-questions.ts",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "generate-questions": "tsx scripts/generate-questions.ts"
   },
   "dependencies": {
     "buffer": "^6.0.3",
@@ -24,6 +27,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

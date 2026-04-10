@@ -33,17 +33,27 @@ const TAB_ICONS: Record<string, string> = {
 type AddTabFormState = { sheet: string } | null
 
 type Props = {
-  sheets: Sheet[]
   projectId: string
 }
 
-export default function QuestionnairePage({ sheets, projectId }: Props) {
+export default function QuestionnairePage({ projectId }: Props) {
+  const [sheets, setSheets] = useState<Sheet[]>([])
+  const [sheetsLoaded, setSheetsLoaded] = useState(false)
   const [projectData, setProjectData] = useState<ProjectData | null>(null)
   const [activeTabId, setActiveTabId] = useState<string>('overview')
   const [showAddCategory, setShowAddCategory] = useState(false)
   const [addTabForm, setAddTabForm] = useState<AddTabFormState>(null)
   const [newTabName, setNewTabName] = useState('')
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Fetch questions from the static JSON file (generated at build time from Excel)
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+    fetch(`${base}/questions.json`)
+      .then((r) => r.json())
+      .then((data: Sheet[]) => { setSheets(data); setSheetsLoaded(true) })
+      .catch(() => setSheetsLoaded(true)) // show UI even if fetch fails
+  }, [])
 
   useEffect(() => {
     let data = getProject(projectId)
@@ -288,7 +298,7 @@ export default function QuestionnairePage({ sheets, projectId }: Props) {
   }, [])
 
   // ── Loading ───────────────────────────────────────────────────────────
-  if (!projectData) {
+  if (!projectData || !sheetsLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
         <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
